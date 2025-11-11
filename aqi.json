@@ -1,0 +1,67 @@
+{
+  "tooltip": { "formatter": "{a} <br/>{b} : {c}" },
+  "series": [
+    {
+      "name": "AQI",
+      "type": "gauge",
+      "startAngle": 180,
+      "endAngle": 0,
+      "center": ["50%", "60%"],
+      "radius": "85%",
+      "min": 0,
+      "max": 600,
+      "splitNumber": 6,
+      "progress": { "show": true, "width": 40 },
+      "axisLine": {
+        "lineStyle": {
+          "width": 40,
+          "color": [
+            [0.1667, "#2E8B73"],
+            [0.3333, "#A4CC4E"],
+            [0.5, "#F2C94C"],
+            [0.6667, "#F2994A"],
+            [0.8333, "#D14D6F"],
+            [1, "#8E3A9D"]
+          ]
+        }
+      },
+      "axisTick": { "show": false },
+      "splitLine": {
+        "show": true,
+        "length": 25,
+        "lineStyle": { "color": "#000", "width": 2 }
+      },
+      "axisLabel": {
+        "show": true,
+        "distance": -20,
+        "color": "#000",
+        "fontSize": 12,
+        "formatter": "{value}"
+      },
+      "pointer": {
+        "length": "60%",
+        "width": 6,
+        "itemStyle": { "color": "#000" }
+      },
+      "detail": {
+        "valueAnimation": true,
+        "formatter": "{value}",
+        "fontSize": 22,
+        "fontWeight": "600",
+        "offsetCenter": [0, "15%"],
+        "color": "#222"
+      },
+      "title": {
+        "fontSize": 14,
+        "offsetCenter": [0, "45%"],
+        "color": "#000"
+      },
+      "data": [
+        {
+          "value": 102,
+          "name": "AQI"
+        }
+      ]
+    }
+  ]
+}
