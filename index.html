@@ -62,6 +62,14 @@
         </div>
 
         <script>
+            const API_URL = "http://<raspi-ip>:8000/api/sensors"; // put your pi's ip address here
+            let charts = {
+                aqi: null,
+                temp: null,
+                body: null,
+                hum: null,
+            };
+
             const AQI_COLORS = [
                 "rgb(76,175,80)",
                 "rgb(255,235,59)",
@@ -78,7 +86,6 @@
                 { max: 400, label: "Very Unhealthy" },
                 { max: 600, label: "Hazardous" },
             ];
-            const AQI_VALUE = 268;
             const getAqiColor = (v) =>
                 v <= 50
                     ? AQI_COLORS[0]
@@ -93,51 +100,73 @@
                             : AQI_COLORS[5];
             const getAqiStatus = (v) =>
                 AQI_LEVELS.find((l) => v <= l.max)?.label || "Unknown";
-            const aqiTextPlugin = {
-                id: "aqiText",
-                afterDraw(chart) {
-                    const { ctx, chartArea } = chart;
-                    const { width, height } = chartArea;
-                    const v = AQI_VALUE;
-                    ctx.save();
-                    ctx.font = "bold 26px Inter";
-                    ctx.fillStyle = "#333";
-                    ctx.textAlign = "center";
-                    ctx.fillText(v, width / 2, height / 1.35);
-                    ctx.font = "14px Inter";
-                    ctx.fillStyle = getAqiColor(v);
-                    ctx.fillText(getAqiStatus(v), width / 2, height / 1.15);
-                    ctx.restore();
-                },
-            };
-            new Chart(document.getElementById("aqiChart"), {
-                type: "doughnut",
-                data: {
-                    datasets: [
+            function createGauge(
+                canvasId,
+                value,
+                maxValue,
+                colorFunc,
+                labelFunc,
+                unit = "",
+                chartKey,
+            ) {
+                if (charts[chartKey]) {
+                    charts[chartKey].destroy();
+                }
+
+                const chart = new Chart(document.getElementById(canvasId), {
+                    type: "doughnut",
+                    data: {
+                        datasets: [
+                            {
+                                data: [value, maxValue - value],
+                                backgroundColor: [colorFunc(value), "#eaeaea"],
+                                borderWidth: 0,
+                                cutout: "75%",
+                            },
+                        ],
+                    },
+                    options: {
+                        plugins: {
+                            tooltip: { enabled: false },
+                            legend: { display: false },
+                            title: { display: false },
+                        },
+                        circumference: 180,
+                        rotation: -90,
+                    },
+                    plugins: [
                         {
-                            data: [AQI_VALUE, 600 - AQI_VALUE],
-                            backgroundColor: [
-                                getAqiColor(AQI_VALUE),
-                                "#eaeaea",
-                            ],
-                            borderWidth: 0,
-                            cutout: "75%",
+                            id: `${canvasId}-text`,
+                            afterDraw(chart) {
+                                const { ctx, chartArea } = chart;
+                                const { width, height } = chartArea;
+                                const v = value;
+                                ctx.save();
+                                ctx.font = "bold 26px Inter";
+                                ctx.fillStyle = "#333";
+                                ctx.textAlign = "center";
+                                ctx.fillText(
+                                    `${v}${unit}`,
+                                    width / 2,
+                                    height / 1.35,
+                                );
+                                ctx.font = "14px Inter";
+                                ctx.fillStyle = colorFunc(v);
+                                ctx.fillText(
+                                    labelFunc(v),
+                                    width / 2,
+                                    height / 1.15,
+                                );
+                                ctx.restore();
+                            },
                         },
                     ],
-                },
-                options: {
-                    plugins: {
-                        tooltip: { enabled: false },
-                        legend: { display: false },
-                    },
-                    circumference: 180,
-                    rotation: -90,
-                },
-                plugins: [aqiTextPlugin],
-            });
-            const TEMP_MIN = -10,
-                TEMP_MAX = 50,
-                TEMP_VALUE = 34;
+                });
+
+                charts[chartKey] = chart;
+                return chart;
+            }
+
             const getTempColor = (t) =>
                 t <= 0
                     ? "rgb(33,150,243)"
@@ -148,53 +177,7 @@
                         : "rgb(244,67,54)";
             const getTempStatus = (t) =>
                 t <= 0 ? "Cold" : t <= 25 ? "Mild" : t <= 40 ? "Warm" : "Hot";
-            const tempTextPlugin = {
-                id: "tempText",
-                afterDraw(chart) {
-                    const { ctx, chartArea } = chart;
-                    const { width, height } = chartArea;
-                    const t = TEMP_VALUE;
-                    ctx.save();
-                    ctx.font = "bold 26px Inter";
-                    ctx.fillStyle = "#333";
-                    ctx.textAlign = "center";
-                    ctx.fillText(`${t}°C`, width / 2, height / 1.35);
-                    ctx.font = "14px Inter";
-                    ctx.fillStyle = getTempColor(t);
-                    ctx.fillText(getTempStatus(t), width / 2, height / 1.15);
-                    ctx.restore();
-                },
-            };
-            const tRange = TEMP_MAX - TEMP_MIN,
-                tNorm = TEMP_VALUE - TEMP_MIN;
-            new Chart(document.getElementById("tempChart"), {
-                type: "doughnut",
-                data: {
-                    datasets: [
-                        {
-                            data: [tNorm, tRange - tNorm],
-                            backgroundColor: [
-                                getTempColor(TEMP_VALUE),
-                                "#eaeaea",
-                            ],
-                            borderWidth: 0,
-                            cutout: "75%",
-                        },
-                    ],
-                },
-                options: {
-                    plugins: {
-                        tooltip: { enabled: false },
-                        legend: { display: false },
-                    },
-                    circumference: 180,
-                    rotation: -90,
-                },
-                plugins: [tempTextPlugin],
-            });
-            const BODY_MIN = 35,
-                BODY_MAX = 41,
-                BODY_VALUE = 37.4;
+
             const getBodyColor = (t) =>
                 t < 36
                     ? "rgb(33,150,243)"
@@ -202,9 +185,7 @@
                       ? "rgb(76,175,80)"
                       : t < 39
                         ? "rgb(255,152,0)"
-                        : t <= 41
-                          ? "rgb(244,67,54)"
-                          : "rgb(90,90,90)";
+                        : "rgb(244,67,54)";
             const getBodyStatus = (t) =>
                 t < 36
                     ? "Hypothermic"
@@ -212,56 +193,8 @@
                       ? "Normal"
                       : t < 39
                         ? "Fever"
-                        : t <= 41
-                          ? "High Fever"
-                          : "Fatal";
-            const bodyTextPlugin = {
-                id: "bodyText",
-                afterDraw(chart) {
-                    const { ctx, chartArea } = chart;
-                    const { width, height } = chartArea;
-                    const t = BODY_VALUE;
-                    ctx.save();
-                    ctx.font = "bold 26px Inter";
-                    ctx.fillStyle = "#333";
-                    ctx.textAlign = "center";
-                    ctx.fillText(`${t}°C`, width / 2, height / 1.35);
-                    ctx.font = "14px Inter";
-                    ctx.fillStyle = getBodyColor(t);
-                    ctx.fillText(getBodyStatus(t), width / 2, height / 1.15);
-                    ctx.restore();
-                },
-            };
-            const bRange = BODY_MAX - BODY_MIN,
-                bNorm = BODY_VALUE - BODY_MIN;
-            new Chart(document.getElementById("bodyChart"), {
-                type: "doughnut",
-                data: {
-                    datasets: [
-                        {
-                            data: [bNorm, bRange - bNorm],
-                            backgroundColor: [
-                                getBodyColor(BODY_VALUE),
-                                "#eaeaea",
-                            ],
-                            borderWidth: 0,
-                            cutout: "75%",
-                        },
-                    ],
-                },
-                options: {
-                    plugins: {
-                        tooltip: { enabled: false },
-                        legend: { display: false },
-                    },
-                    circumference: 180,
-                    rotation: -90,
-                },
-                plugins: [bodyTextPlugin],
-            });
-            const HUM_MIN = 0,
-                HUM_MAX = 100,
-                HUM_VALUE = 64;
+                        : "High Fever";
+
             const getHumColor = (h) =>
                 h < 30
                     ? "rgb(33,150,243)"
@@ -278,48 +211,58 @@
                       : h < 80
                         ? "Humid"
                         : "Very Humid";
-            const humTextPlugin = {
-                id: "humText",
-                afterDraw(chart) {
-                    const { ctx, chartArea } = chart;
-                    const { width, height } = chartArea;
-                    const h = HUM_VALUE;
-                    ctx.save();
-                    ctx.font = "bold 26px Inter";
-                    ctx.fillStyle = "#333";
-                    ctx.textAlign = "center";
-                    ctx.fillText(`${h}%`, width / 2, height / 1.35);
-                    ctx.font = "14px Inter";
-                    ctx.fillStyle = getHumColor(h);
-                    ctx.fillText(getHumStatus(h), width / 2, height / 1.15);
-                    ctx.restore();
-                },
-            };
-            new Chart(document.getElementById("humChart"), {
-                type: "doughnut",
-                data: {
-                    datasets: [
-                        {
-                            data: [HUM_VALUE, HUM_MAX - HUM_VALUE],
-                            backgroundColor: [
-                                getHumColor(HUM_VALUE),
-                                "#eaeaea",
-                            ],
-                            borderWidth: 0,
-                            cutout: "75%",
-                        },
-                    ],
-                },
-                options: {
-                    plugins: {
-                        tooltip: { enabled: false },
-                        legend: { display: false },
-                    },
-                    circumference: 180,
-                    rotation: -90,
-                },
-                plugins: [humTextPlugin],
-            });
+            async function loadSensorData() {
+                try {
+                    const res = await fetch(API_URL);
+                    const data = await res.json();
+
+                    const AQI = data.AIRQUALITY || 0;
+                    const TEMP = data.TEMP || 0;
+                    const BODYTEMP = data.BODYTEMP || 0;
+                    const HUM = data.HUMIDITY || 0;
+
+                    createGauge(
+                        "aqiChart",
+                        AQI,
+                        600,
+                        getAqiColor,
+                        getAqiStatus,
+                        "",
+                        "aqi",
+                    );
+                    createGauge(
+                        "tempChart",
+                        TEMP,
+                        50,
+                        getTempColor,
+                        getTempStatus,
+                        "°C",
+                        "temp",
+                    );
+                    createGauge(
+                        "bodyChart",
+                        BODYTEMP,
+                        41,
+                        getBodyColor,
+                        getBodyStatus,
+                        "°C",
+                        "body",
+                    );
+                    createGauge(
+                        "humChart",
+                        HUM,
+                        100,
+                        getHumColor,
+                        getHumStatus,
+                        "%",
+                        "hum",
+                    );
+                } catch (err) {
+                    console.error("Failed to fetch sensor data:", err);
+                }
+            }
+            loadSensorData();
+            setInterval(loadSensorData, 5000);
         </script>
     </body>
 </html>

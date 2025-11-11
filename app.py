@@ -9,10 +9,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Wedge, Circle
 from flask import Flask, jsonify
-
+from flask_cors import CORS
 
 # flask api
 app = Flask(__name__)
+CORS(app)
 @app.route("/api/sensors", methods= ["GET"])
 def get_sensor_data():
     return jsonify(sensor_data.copy())
